@@ -70,10 +70,11 @@ const MUSI_POINTS = {
   musiS:{name:'Musi river near Nagole (approx.)', lat:17.375, lon:78.560}
 };
 
-// Interconnections – water only goes downhill (higher FTL → lower FTL)
+// Interconnections. Gravity links go downhill (higher FTL → lower FTL).
+// L2 climbs about 39 m, so it is a PUMPED link: the gravity-only routing rule never uses it for flood surplus.
 const LINKS = [
   {id:'L1', from:'osman',   to:'himayat', kind:'Proposed transfer canal'},
-  {id:'L2', from:'himayat', to:'hussain', kind:'Proposed transfer pipeline'},
+  {id:'L2', from:'himayat', to:'durgam',  kind:'Proposed pumped pipeline (uphill)', pumped:true},
   {id:'L3', from:'durgam',  to:'hussain', kind:'Existing nala chain, gated'},
   {id:'L4', from:'hussain', to:'saroor',  kind:'Proposed transfer pipeline'},
   {id:'L5', from:'hussain', to:'musiH',   kind:'Existing surplus nala to the Musi'},
@@ -84,7 +85,7 @@ const nodeOf = id => LK[id] || {...MUSI_POINTS[id], id, ftl:null, grid:toGrid(MU
 // Substations: one in the middle of each link (section formula, ratio 1:1). Monitored values are PRESET.
 const SUB_PRESET = {
   L1:{flow:0,   depth:0.0, gate:0,  pH:7.8, DO:6.3, BOD:2.3, turb:7,  TDS:325, temp:26},
-  L2:{flow:0,   depth:0.0, gate:0,  pH:7.9, DO:6.0, BOD:2.7, turb:9,  TDS:352, temp:26},
+  L2:{flow:0,   depth:0.0, gate:0,  pH:7.9, DO:6.1, BOD:2.6, turb:8,  TDS:350, temp:26},
   L3:{flow:42,  depth:0.6, gate:30, pH:7.9, DO:0.8, BOD:11,  turb:24, TDS:760, temp:28},
   L4:{flow:0,   depth:0.0, gate:0,  pH:7.6, DO:2.3, BOD:7.6, turb:17, TDS:640, temp:27},
   L5:{flow:310, depth:1.1, gate:60, pH:7.5, DO:2.6, BOD:7.2, turb:19, TDS:655, temp:27},
@@ -143,7 +144,7 @@ function hoursToFtl(L, netCusecs){
 function chooseTarget(list, L){
   const byId = Object.fromEntries(list.map(x=>[x.id,x]));
   const c = LINKS.filter(k=>k.from===L.id && byId[k.to]).map(k=>byId[k.to])
-    .filter(o=>o.ftl!=null && L.ftl!=null && o.ftl<L.ftl && o.fill<0.8)
+    .filter(o=>o.ftl!=null && L.ftl!=null && o.ftl<L.ftl && o.fill<0.8)   // pumped (uphill) links fail o.ftl < L.ftl
     .sort((a,b)=>(b.vftl*(1-b.fill))-(a.vftl*(1-a.fill)));
   return c[0] || null;
 }
@@ -168,10 +169,10 @@ const POLLUTION = {
          kswift:['Watch BOD and turbidity at SS-1 before any transfer','Desilting estimate with AP (storage loss per year)']},
   himayat:{level:'Low', sources:['Farm run-off from the Esi catchment','Silt','Sewage from villages upstream'],
          now:['Catchment protection rules (G.O. 111, since relaxed)','Treatment at HMWSSB water plants before drinking'],
-         kswift:['Quality gate at SS-1/SS-2: no transfer if DO is under 4 mg/L']},
+         kswift:['Quality gate at SS-1: no transfer if DO is under 4 mg/L','SS-2 pumps one way only (Himayat → Durgam), so Durgam’s polluted water can never flow back into this drinking-water reservoir']},
   durgam:{level:'Very high', sources:['Sewage from 4 major inlets (found by HMWSSB, Sep 2026)','Storm drain carrying waste from offices and colonies','Solid waste and plastic','Water hyacinth and algae'],
          now:['Sewage treatment plants of 5 MLD and 7 MLD near the lake','Diversion of sewage inlets','Weed and trash removal'],
-         kswift:['Aerator ON when DO < 4 mg/L','Gate at SS-3 closes so Class E water is not sent into Hussain Sagar untreated']},
+         kswift:['Aerator ON when DO < 4 mg/L','Gate at SS-3 closes so Class E water is not sent into Hussain Sagar untreated','SS-2 can pump cleaner Himayat Sagar water in to dilute the lake and raise its oxygen (needs a pump: 39 m lift)']},
   hussain:{level:'High', sources:['About 155 MLD of sewage once came through the Kukatpally nala alone','Picket, Banjara and Balkapur nalas','Idol immersion (paint, plaster of Paris)','Floating waste and weeds'],
          now:['STPs: 30 MLD Picket nala, 20 MLD Balkapur nala, 5 MLD Rangadhamini – being upgraded to 60, 40 and 10 MLD','7 interception-and-diversion works that send nala sewage away from the lake','Dredging of sediment, aeration','Trash skimmers and idol removal after immersion'],
          kswift:['Aerator ON when DO < 4 mg/L','Monitor quality at SS-5 before surplus leaves for the Musi']},

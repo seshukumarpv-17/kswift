@@ -50,8 +50,8 @@ function addNetwork(m, opts={}){
   L.polyline(ESI,{color:'#1E6F80',weight:3,opacity:.45}).addTo(m).bindTooltip('Esi river (approx.)');
   LINKS.forEach(k=>{
     const A=nodeOf(k.from), B=nodeOf(k.to);
-    L.polyline([[A.lat,A.lon],[B.lat,B.lon]],{color:'#8E847B',weight:3,dashArray:'8 6'}).addTo(m)
-     .bindTooltip(`${k.id}: ${A.name} → ${B.name} · ${distanceKm(A,B).toFixed(2)} km`);
+    L.polyline([[A.lat,A.lon],[B.lat,B.lon]],{color:k.pumped?'#7A5AA8':'#8E847B',weight:3,dashArray:k.pumped?'3 6':'8 6'}).addTo(m)
+     .bindTooltip(`${k.id}: ${A.name} → ${B.name} · ${distanceKm(A,B).toFixed(2)} km${k.pumped?' · pumped, uphill':''}`);
   });
   BASE.forEach(l=>{
     const st = statusOf(l).s, r = 7 + Math.sqrt(l.area/1e6)*2.2;
@@ -90,9 +90,9 @@ function drawProfile(list, svg){
   svg.appendChild(el('text',{x:x1,y:H-6,'font-size':13,fill:'#4A5F63','text-anchor':'end'},'East (km on the grid)'));
   // downhill links
   LINKS.filter(k=>LK[k.to]).forEach(k=>{ const A=list.find(l=>l.id===k.from), B=list.find(l=>l.id===k.to);
-    svg.appendChild(el('path',{d:`M${X(A.grid[0])} ${Y(A.ftl)+20} L${X(B.grid[0])} ${Y(B.ftl)+20}`,stroke:'#8E847B','stroke-width':2,'stroke-dasharray':'6 5',fill:'none'}));
+    svg.appendChild(el('path',{d:`M${X(A.grid[0])} ${Y(A.ftl)+20} L${X(B.grid[0])} ${Y(B.ftl)+20}`,stroke:k.pumped?'#7A5AA8':'#8E847B','stroke-width':2,'stroke-dasharray':k.pumped?'2 4':'6 5',fill:'none'}));
     const mx=(X(A.grid[0])+X(B.grid[0]))/2, my=(Y(A.ftl)+Y(B.ftl))/2+20;
-    svg.appendChild(el('text',{x:mx,y:my-6,'text-anchor':'middle','font-size':12,fill:'#6B5F55','font-weight':700},subFor(k.id).id));
+    svg.appendChild(el('text',{x:k.pumped?mx+12:mx,y:k.pumped?my+18:my-6,'text-anchor':k.pumped?'start':'middle','font-size':12,fill:k.pumped?'#7A5AA8':'#6B5F55','font-weight':700},subFor(k.id).id+(k.pumped?' (pump ↑)':'')));
   });
   svg.appendChild(el('path',{d:`M${X(11)} ${Y(466)} H${x1}`,stroke:'#1E6F80','stroke-width':6,'stroke-linecap':'round'}));
   svg.appendChild(el('text',{x:X(11),y:Y(466)+20,'font-size':13,fill:'#0C3E4A','font-weight':700},'Musi river (all five drain here)'));
@@ -200,7 +200,8 @@ function renderLakePage(id){
       <div class="panel">
         <h2>Connections and substations</h2>
         <ul class="plain">${links.map(k=>{const s=subFor(k.id), other=k.from===id?k.to:k.from, A=nodeOf(k.from),B=nodeOf(k.to);
-          return `<li><b>${s.id}</b> on ${k.id}: ${nameOf(k.from)} → ${nameOf(k.to)}<br><span class="muted">${k.kind} · ${distanceKm(A,B).toFixed(2)} km${A.ftl!=null&&B.ftl!=null?' · drop '+f(A.ftl-B.ftl,2)+' m':''} · gate ${s.v.gate}% open</span></li>`}).join('')}</ul>
+          const dh=A.ftl!=null&&B.ftl!=null?A.ftl-B.ftl:null;
+          return `<li><b>${s.id}</b> on ${k.id}: ${nameOf(k.from)} → ${nameOf(k.to)}<br><span class="muted">${k.kind} · ${distanceKm(A,B).toFixed(2)} km${dh==null?'':dh>=0?' · drop '+f(dh,2)+' m':' · rises '+f(-dh,2)+' m (pump needed)'} · ${k.pumped?'pump':'gate'} ${s.v.gate}% ${k.pumped?'on':'open'}</span></li>`}).join('')}</ul>
         <h3 style="margin-top:12px">Pollution: ${P.level}</h3>
         <ul class="plain small">${P.sources.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
         <p><a href="#pollution">How it is being removed →</a></p>
@@ -212,7 +213,7 @@ function renderLakePage(id){
 }
 
 // ---------- Coordinate grid (Class 10) ----------
-const MAP_PAIRS=[['osman','himayat'],['osman','durgam'],['osman','hussain'],['himayat','hussain'],['durgam','hussain'],['hussain','saroor']];
+const MAP_PAIRS=[['osman','himayat'],['osman','durgam'],['osman','hussain'],['himayat','durgam'],['durgam','hussain'],['hussain','saroor']];
 function renderGrid(){
   const svg=$('#gridMap'); svg.innerHTML='';
   const list=lakes(), byId=Object.fromEntries(list.map(l=>[l.id,l]));
@@ -400,13 +401,14 @@ function renderSubs(){
       <dl class="kv small">
         <dt>Location</dt><dd>${s.lat}°N, ${s.lon}°E · <a href="${gmaps(s.lat,s.lon)}" target="_blank" rel="noopener">Google Maps</a></dd>
         <dt>Grid point</dt><dd>(${s.grid[0]}, ${s.grid[1]}) = midpoint of (${A.grid}) and (${B.grid})</dd>
-        <dt>Link length</dt><dd>${d.toFixed(2)} km (straight line)${drop!=null?` · drop ${f(drop,2)} m · slope ${f(drop/(d*1000)*100,3)} %`:' · ends at the Musi'}</dd>
+        <dt>Link length</dt><dd>${d.toFixed(2)} km (straight line)${drop==null?' · ends at the Musi':drop>=0?` · drop ${f(drop,2)} m · slope ${f(drop/(d*1000)*100,3)} %`:` · <b>rises ${f(-drop,2)} m</b> (slope ${f(-drop/(d*1000)*100,3)} % uphill)`}</dd>
+        ${s.link.pumped?`<dt>How water moves</dt><dd>Uphill, so gravity cannot carry it: SS-2 has a <b>pump</b>. It runs one way only (Himayat → Durgam) and is not used for flood surplus, which always goes downhill.</dd>`:''}
       </dl>
       <h4>Monitored values <span class="tag pre">preset</span></h4>
       <div class="mon">
         <div><span>Flow</span><b>${f(v.flow,0)}</b><small>cusecs</small></div>
         <div><span>Channel depth</span><b>${f(v.depth,1)}</b><small>m</small></div>
-        <div><span>Gate</span><b>${v.gate}%</b><small>${v.gate?'open':'closed'}</small></div>
+        <div><span>${s.link.pumped?'Pump':'Gate'}</span><b>${s.link.pumped?(v.gate?'On':'Off'):v.gate+'%'}</b><small>${s.link.pumped?'39 m lift':v.gate?'open':'closed'}</small></div>
         <div><span>pH</span><b class="${v.pH<6.5||v.pH>8.5?'bad':''}">${f(v.pH,1)}</b><small>6.5–8.5</small></div>
         <div><span>DO</span><b class="${v.DO<4?'bad':''}">${f(v.DO,1)}</b><small>mg/L · ≥ 4</small></div>
         <div><span>BOD</span><b class="${v.BOD>3?'bad':''}">${f(v.BOD,1)}</b><small>mg/L · ≤ 3</small></div>

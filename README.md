@@ -28,7 +28,7 @@ Made for **RSBVP 2026-27**: Theme *Science, Technology, and Innovation for a Sus
 | Link | From → to | Substation |
 | --- | --- | --- |
 | L1 | Osman Sagar → Himayat Sagar | SS-1 |
-| L2 | Himayat Sagar → Hussain Sagar | SS-2 |
+| L2 | Himayat Sagar → Durgam Cheruvu (pumped, about 39 m uphill) | SS-2 |
 | L3 | Durgam Cheruvu → Hussain Sagar | SS-3 |
 | L4 | Hussain Sagar → Saroornagar | SS-4 |
 | L5 | Hussain Sagar → Musi (near Amberpet) | SS-5 |
@@ -38,7 +38,7 @@ Made for **RSBVP 2026-27**: Theme *Science, Technology, and Innovation for a Sus
 1. Hours to FTL = free space ÷ (net inflow × 0.0283 × 3600)
 2. **Red** if a lake is at FTL or less than 6 hours away
 3. **Amber** if it is 90% full or more, DO is under 4 mg/L, or pH is outside 6.5–8.5
-4. Red lake → open the substation gate to a linked **lower** lake that is under 80% full and has the most free space; otherwise release to the Musi
+4. Red lake → open the substation gate to a linked **lower** lake (gravity only; the pumped SS-2 link is never used for flood surplus) that is under 80% full and has the most free space; otherwise release to the Musi
 5. DO under 4 mg/L → aerator on; dirty water is treated before a gate sends it on
 
 ---
