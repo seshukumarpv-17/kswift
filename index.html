@@ -2,87 +2,111 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>K-SWIFT – Hyderabad lake network</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 <meta name="theme-color" content="#0C3E4A">
-<meta name="description" content="K-SWIFT: a Class 10 maths model of five interconnected HMDA lakes in Hyderabad – levels, water quality, flood alerts.">
+<meta name="description" content="K-SWIFT: a Class 10 maths model of five interconnected HMDA lakes in Hyderabad – volume, height, water quality, substations, flood simulation and pollution control.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="K-SWIFT">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <header class="top">
-  <div class="brand">K-SWIFT<small>Smart Water Innovation For Tomorrow · 5 HMDA lakes</small></div>
-  <div class="conn" aria-live="polite"><span class="dot" id="connDot"></span><span id="connText">Using published data</span></div>
+  <div class="brand">K-SWIFT<small>Kakatiya – Smart Water Innovation For Tomorrow · 5 HMDA lakes</small></div>
+  <div class="top-actions">
+    <button class="btn light" id="installBtn" hidden>Install app</button>
+    <button class="btn ghost-light" id="howInstall">Get the app</button>
+  </div>
 </header>
 <nav class="tabs" aria-label="Sections">
-  <a href="#network">Lakes</a>
+  <a href="#lakes">Lakes</a>
   <a href="#map">Map</a>
   <a href="#simulate">Flood simulator</a>
   <a href="#maths">Maths</a>
-  <a href="#sensor">Model sensors</a>
+  <a href="#subs">Substations</a>
+  <a href="#pollution">Pollution control</a>
 </nav>
 
 <main>
-<!-- NETWORK -->
-<section data-view="network">
+<!-- LAKES -->
+<section data-view="lakes">
   <div class="hero">
     <div class="hero-head">
-      <h1>Water runs downhill from Osman Sagar to the Musi</h1>
-      <p class="muted">Side view of the five lakes at their Full Tank Level (FTL) height. Blue shows how full each one is now.</p>
+      <h1>Five lakes, one network, all draining to the Musi</h1>
+      <p class="muted">Side view at Full Tank Level (FTL) height. Blue shows how full each lake is. Tap a lake for its own page and map.</p>
     </div>
-    <svg class="profile" id="profile" viewBox="0 0 1000 330" role="img" aria-label="Elevation profile of the five lakes"></svg>
+    <div class="pscroll"><svg class="profile" id="profile" viewBox="0 0 1000 360" role="img" aria-label="Elevation profile of the five lakes"></svg></div>
     <div class="legend">
       <span><i class="sw" style="background:var(--ok)"></i>Safe</span>
       <span><i class="sw" style="background:var(--warn)"></i>Watch: over 90% full or poor water</span>
       <span><i class="sw" style="background:var(--bad)"></i>Act: at FTL or under 6 h away</span>
-      <span><i class="sw" style="background:var(--none)"></i>Height not published – set it in Model sensors</span>
+      <span>* height is a preset (no official FTL published)</span>
     </div>
   </div>
   <div class="lakes" id="lakeList"></div>
-  <p class="note" style="margin-top:14px">Levels and water quality are the latest published figures (HMWSSB, GHMC, TGPCB, HMDA) until you connect the model or enter your own readings. This is a school project, not an official flood warning.</p>
+  <div class="panel" style="margin-top:16px;overflow-x:auto">
+    <h2>All five lakes side by side</h2>
+    <table id="allTable"><thead><tr><th>Lake</th><th class="num">Volume at FTL (M m³)</th><th class="num">% full</th><th class="num">Area (km²)</th><th class="num">Acres</th><th class="num">FTL (m)</th><th class="num">Avg depth (m)</th><th class="num">pH</th><th class="num">DO</th><th class="num">BOD</th><th class="num">Turb.</th><th class="num">WQI</th></tr></thead><tbody></tbody></table>
+  </div>
+  <p class="note" style="margin-top:14px">The exhibition model runs on preset data, not live sensors. Every value is marked <span class="tag pub">published</span> (HMWSSB, GHMC, TGPCB, HMDA and studies) or <span class="tag pre">preset</span> (a demo value used by the model). This is a school project, not an official flood warning.</p>
 </section>
+
+<!-- ONE LAKE -->
+<section data-view="lake"><div id="lakePage"></div></section>
 
 <!-- MAP -->
 <section data-view="map">
-  <h1>The five lakes on a coordinate grid</h1>
-  <p class="muted">Origin (0, 0) is 17.30°N, 78.30°E and one square is 1 km. Dashed lines are straight-line distances worked out with the distance formula. Click a lake for its details.</p>
-  <div class="panel mapwrap"><svg class="gridmap" id="gridMap" viewBox="0 0 980 680" role="img" aria-label="Grid map of the five lakes with distances"></svg></div>
+  <div class="map-head">
+    <div><h1>All five lakes on one map</h1>
+    <p class="muted">Lakes are circles (ring colour = status), dashed lines are the K-SWIFT links, numbered squares are substations. Tap anything for details.</p></div>
+    <div class="seg" role="group" aria-label="Map type"><button data-mapmode="real" aria-pressed="true">Real map</button><button data-mapmode="grid" aria-pressed="false">Coordinate grid</button></div>
+  </div>
+  <div id="realWrap" class="panel"><div id="allMap" class="map tall" role="region" aria-label="Map of all five lakes"></div>
+    <p class="note" style="margin:8px 0 0">Use the box at the top right to switch between street map and satellite. River lines are approximate. Map tiles need internet.</p></div>
+  <div id="gridWrap" hidden>
+    <div class="panel mapwrap"><svg class="gridmap" id="gridMap" viewBox="0 0 980 680" role="img" aria-label="Grid map of the five lakes with distances"></svg>
+    <p class="note">Origin (0, 0) = 17.30°N, 78.30°E; one square = 1 km; x = (longitude − 78.30) × 106, y = (latitude − 17.30) × 111.</p></div>
+  </div>
   <div class="panel" style="margin-top:14px;overflow-x:auto">
     <h2>Distance between every pair (km)</h2>
     <table id="distTable"><thead><tr></tr></thead><tbody></tbody></table>
-    <p class="note" style="margin-top:8px">d = √[(x₂ − x₁)² + (y₂ − y₁)²]. Real nala routes are longer than these straight lines. The Musi and Esi lines are drawn only to show direction.</p>
+    <p class="note" style="margin-top:8px">d = √[(x₂ − x₁)² + (y₂ − y₁)²]. Real nala routes are longer than these straight lines.</p>
   </div>
 </section>
 
 <!-- SIMULATE -->
 <section data-view="simulate">
   <h1>What happens in a heavy storm?</h1>
-  <p class="muted">Pick a storm and press Run. Each 10-minute step uses the water-balance rule: change in volume = (inflow − outflow) × time.</p>
+  <p class="muted">Pick a storm and press Run. Each 10-minute step uses the water-balance rule: change in volume = (inflow − outflow) × time. Lakes start at their preset levels.</p>
+  <div class="hero" style="padding-bottom:4px"><div class="pscroll"><svg class="profile" id="simProfile" viewBox="0 0 1000 360" role="img" aria-label="Lake levels during the simulation"></svg></div></div>
   <div class="grid2">
     <div class="panel">
+      <div class="btns" style="margin-top:0"><span class="muted small" style="align-self:center">Quick storms:</span>
+        <button class="btn ghost sm" data-storm="5,2,0.2">Normal rain</button>
+        <button class="btn ghost sm" data-storm="15,4,0.3">Heavy rain</button>
+        <button class="btn ghost sm" data-storm="40,6,0.5">Cloudburst</button></div>
       <label for="rain">Rain: <span id="rainV"></span> mm per hour</label>
-      <input type="range" id="rain" min="0" max="100" step="5" value="40">
+      <input type="range" id="rain" min="0" max="100" step="5" value="15">
       <label for="hours">Storm length: <span id="hoursV"></span> hours</label>
-      <input type="range" id="hours" min="1" max="24" step="1" value="6">
+      <input type="range" id="hours" min="1" max="24" step="1" value="4">
       <label for="runoff">Share of rain that runs off into lakes: <span id="runoffV"></span></label>
-      <input type="range" id="runoff" min="0.1" max="0.9" step="0.05" value="0.5">
-      <label class="check"><input type="checkbox" id="links"> Use proposed links: send surplus to a lower lake with space instead of into the Musi</label>
-      <div class="btns">
-        <button class="btn" id="runSim">Run storm</button>
-        <button class="btn ghost" id="resetSim">Reset to today</button>
-      </div>
-      <p class="note" style="margin-top:10px">Catchments: Osman Sagar 738 km², Himayat Sagar 689 km², Hussain Sagar 240 km² (published). Durgam Cheruvu and Saroornagar have no published catchment, so the simulator assumes 10 × lake area – a classroom assumption.</p>
+      <input type="range" id="runoff" min="0.1" max="0.9" step="0.05" value="0.3">
+      <label class="check"><input type="checkbox" id="links" checked> Use K-SWIFT links: send surplus downhill to a linked lake that is under 80% full, through its substation, instead of into the Musi</label>
+      <div class="btns"><button class="btn" id="runSim">Run storm</button><button class="btn ghost" id="resetSim">Reset</button></div>
+      <p class="note" style="margin-top:10px">Catchments: Osman Sagar 738 km², Himayat Sagar 689 km², Hussain Sagar 240 km² (published). Durgam Cheruvu and Saroornagar have no published catchment, so the simulator assumes 10 × lake area.</p>
     </div>
     <div class="panel">
       <h2 id="simHead">Ready</h2>
-      <table id="simTable"><thead><tr><th>Lake</th><th class="num">Start</th><th class="num">End</th><th class="num">Peak</th><th>Status</th></tr></thead><tbody></tbody></table>
+      <div style="overflow-x:auto"><table id="simTable"><thead><tr><th>Lake</th><th class="num">Start</th><th class="num">End</th><th class="num">Peak</th><th>Status</th></tr></thead><tbody></tbody></table></div>
       <h3 style="margin-top:14px">What the algorithm did</h3>
-      <div class="log" id="simLog"><div class="muted">Run a storm to see alerts and transfers.</div></div>
+      <div class="log" id="simLog"><div class="muted">Run a storm to see alerts and gate decisions.</div></div>
     </div>
   </div>
 </section>
@@ -90,59 +114,58 @@
 <!-- MATHS -->
 <section data-view="maths">
   <h1>Class 10 maths behind K-SWIFT</h1>
-  <p class="muted">Change any number and the working updates. Every calculator starts with real lake data.</p>
+  <p class="muted">Choose two lakes. Every widget names the concept, says where K-SWIFT uses it, and works it out step by step for Lake 1 and Lake 2.</p>
+  <div class="panel pickers">
+    <div><label for="m1"><span class="dotl l1"></span>Lake 1</label><select id="m1"></select></div>
+    <button class="btn ghost" id="mSwap" aria-label="Swap Lake 1 and Lake 2">⇄ Swap</button>
+    <div><label for="m2"><span class="dotl l2"></span>Lake 2</label><select id="m2"></select></div>
+    <p class="note" id="mSame" hidden>Both are the same lake – pick a different Lake 2 for the two-lake widgets.</p>
+  </div>
   <div class="calcs" id="calcs"></div>
 </section>
 
-<!-- SENSOR -->
-<section data-view="sensor">
-  <h1>Connect the exhibition model</h1>
-  <div class="grid2">
-    <div class="panel">
-      <h2>USB from the ESP32</h2>
-      <p>Plug the ESP32 into this laptop and press Connect. The ESP32 must be running the K-SWIFT firmware (firmware/kswift_esp32). USB works in Chrome or Edge on a laptop, not on phones.</p>
-      <div class="btns">
-        <button class="btn" id="connectBtn">Connect model</button>
-        <button class="btn ghost" id="disconnectBtn" disabled>Disconnect</button>
-      </div>
-      <p class="note" id="serialMsg" style="margin-top:8px"></p>
-      <h3 style="margin-top:12px">Test without hardware</h3>
-      <p class="note">Paste a line the way the ESP32 sends it:<br><code>LAKE=hussain;DEPTH_CM=11.2;PH=7.4;TURB=40;DO=3.1</code></p>
-      <div class="row"><input type="text" id="testLine" value="LAKE=hussain;DEPTH_CM=11.2;PH=7.4;TURB=40;DO=3.1" aria-label="Sensor line"></div>
-      <div class="btns"><button class="btn ghost" id="sendTest">Read this line</button></div>
-      <h3 style="margin-top:14px">Readings received</h3>
-      <div class="log" id="serialLog"><div class="muted">Nothing yet.</div></div>
-    </div>
-    <div class="panel">
-      <h2>Your own readings</h2>
-      <p class="note">Enter field or model readings. They replace the published figure for that lake. Leave a box empty to keep the published value.</p>
-      <label for="mLake">Lake</label>
-      <select id="mLake"></select>
-      <div class="row">
-        <div><label for="mFill">% full</label><input type="number" id="mFill" min="0" max="130" step="0.1"></div>
-        <div><label for="mPH">pH</label><input type="number" id="mPH" min="0" max="14" step="0.01"></div>
-        <div><label for="mDO">DO (mg/L)</label><input type="number" id="mDO" min="0" step="0.1"></div>
-        <div><label for="mBOD">BOD (mg/L)</label><input type="number" id="mBOD" min="0" step="0.1"></div>
-        <div><label for="mTurb">Turbidity (NTU)</label><input type="number" id="mTurb" min="0" step="1"></div>
-      </div>
-      <div class="btns"><button class="btn" id="saveReading">Save reading</button><button class="btn ghost" id="clearReading">Back to published data</button></div>
-      <h3 style="margin-top:16px">Model settings</h3>
-      <p class="note">Height of the red FTL mark inside each container, and FTL heights for lakes where none is published (read them from Google Earth Pro).</p>
-      <table id="settingsTable"><thead><tr><th>Lake</th><th>FTL mark in box (cm)</th><th>Real FTL height (m)</th></tr></thead><tbody></tbody></table>
-      <label for="timeScaleIn">Time scale: 1 hour on the model = how many real hours?</label>
-      <input type="number" id="timeScaleIn" min="1" step="1" value="60">
-      <p class="note">60 means one minute of rising water on the model counts as one real hour, so a 6-minute warning on the model is a 6-hour warning for the lake.</p>
-      <div class="btns"><button class="btn ghost" id="saveSettings">Save settings</button></div>
-    </div>
+<!-- SUBSTATIONS -->
+<section data-view="subs">
+  <h1>Substations on the interconnections</h1>
+  <p class="muted">One substation sits in the middle of each link (section formula, ratio 1 : 1). It measures the water passing, and it works the gate: it opens only when water can flow downhill and the water is clean enough to send on.</p>
+  <div class="panel"><div id="subMap" class="map" role="region" aria-label="Map of the substations"></div></div>
+  <div class="subs" id="subList"></div>
+</section>
+
+<!-- POLLUTION -->
+<section data-view="pollution">
+  <h1>Pollution control</h1>
+  <p class="muted">Where each lake’s pollution comes from, how it is removed today, and what K-SWIFT adds.</p>
+  <div class="pol-grid" id="polLakes"></div>
+  <h2 style="margin-top:22px">Ways pollution is removed</h2>
+  <div class="train" aria-label="Treatment order">
+    <span>1 Screen</span><i>→</i><span>2 Settle</span><i>→</i><span>3 Treat (STP / bacteria)</span><i>→</i><span>4 Filter</span><i>→</i><span>5 Aerate</span><i>→</i><span>6 Plants polish</span><i>→</i><span>7 Quality gate</span>
   </div>
+  <div class="methods" id="methods"></div>
+  <article class="calc" id="effCalc" style="margin-top:16px;max-width:640px">
+    <div class="ch">Percentages · Ch 13 comparison</div><h3>How well does treatment work?</h3>
+    <p class="where"><b>Where it is used:</b> checking each stage of the model’s treatment box and the lakes’ STPs.</p>
+    <div class="formula">Removal % = (in − out) ÷ in × 100</div>
+    <div class="row"><div><label>BOD in (mg/L)</label><input type="number" data-k="i" value="12" step="0.1"></div><div><label>BOD out (mg/L)</label><input type="number" data-k="o" value="3" step="0.1"></div>
+    <div><label>DO before aeration</label><input type="number" data-k="d1" value="0.3" step="0.1"></div><div><label>DO after aeration</label><input type="number" data-k="d2" value="4.5" step="0.1"></div></div>
+    <div class="steps"></div>
+  </article>
 </section>
 </main>
 
-<dialog id="lakeDlg" aria-labelledby="dlgTitle">
-  <div class="dlg-head"><div><h2 id="dlgTitle"></h2><div id="dlgSub" class="muted"></div></div><button class="x" id="dlgClose" aria-label="Close">×</button></div>
-  <div class="dlg-body" id="dlgBody"></div>
+<dialog id="installDlg" aria-labelledby="instTitle">
+  <div class="dlg-head"><h2 id="instTitle">Get K-SWIFT as an app</h2><button class="x" id="installClose" aria-label="Close">×</button></div>
+  <div class="dlg-body">
+    <p>K-SWIFT installs straight from this website and then opens like a normal app, even without internet (maps need internet).</p>
+    <h3>Laptop (Chrome or Edge)</h3><p>Click <b>Install app</b> at the top, or the install icon at the right end of the address bar.</p>
+    <h3>Android phone (Chrome)</h3><p>Tap <b>⋮</b> → <b>Add to Home screen</b> → <b>Install</b>.</p>
+    <h3>iPhone or iPad (Safari)</h3><p>Tap <b>Share</b> → <b>Add to Home Screen</b>.</p>
+    <h3>Download the files</h3><p><a href="https://github.com/seshukumarpv-17/kswift/archive/refs/heads/main.zip">Download K-SWIFT (zip)</a> · unzip and open <code>index.html</code> in any browser.</p>
+    <p class="note">Website: <a href="https://seshukumarpv-17.github.io/kswift/">seshukumarpv-17.github.io/kswift</a></p>
+  </div>
 </dialog>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="js/model.js"></script>
 <script src="js/app.js"></script>
 </body>

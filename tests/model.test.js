@@ -1,62 +1,32 @@
-// Run with:  node tests/model.test.js
-// Checks the maths in js/model.js against the worked examples in the project write-up.
-const assert = require('assert');
+// Run: node tests/model.test.js
 const m = require('../js/model.js');
-const L = id => m.BASE.find(b => b.id === id);
-const near = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol, `${msg}: got ${a}, expected ${b}`);
-let passed = 0;
-const test = (name, fn) => { fn(); passed++; console.log('ok  -', name); };
-
-test('distance formula: Hussain Sagar to Durgam Cheruvu is 9.0 km', () =>
-  near(m.distanceKm(L('hussain'), L('durgam')), 9.0, 0.05, 'distance'));
-test('distance formula: Osman Sagar to Hussain Sagar is about 18.9 km', () =>
-  near(m.distanceKm(L('osman'), L('hussain')), 18.94, 0.05, 'distance'));
-test('units: 3.90 TMC is 110.4 million m3', () =>
-  near(L('osman').vftl / 1e6, 110.4, 0.1, 'volume'));
-test('WQI for Durgam Cheruvu example is 323 (unfit)', () => {
-  const q = m.wqi({pH: 8.0, DO: 0.3, BOD: 12, turb: 26});
-  near(q.value, 323, 1, 'WQI');
-  assert.strictEqual(m.wqiBand(q.value), 'unfit');
-});
-test('WQI uses only the readings that exist', () => {
-  const q = m.wqi({pH: 7.24, DO: 2.0, BOD: 5.4, turb: null});
-  assert.strictEqual(q.parts.length, 3);
-});
-test('status: red at or above FTL', () =>
-  assert.strictEqual(m.status({fill: 1.0, DO: 6, pH: 7.5}, null).s, 'red'));
-test('status: red when FTL is under 6 hours away', () =>
-  assert.strictEqual(m.status({fill: 0.85, DO: 6, pH: 7.5}, 5).s, 'red'));
-test('status: amber at 90% full', () =>
-  assert.strictEqual(m.status({fill: 0.92, DO: 6, pH: 7.5}, null).s, 'amber'));
-test('status: amber when DO is under 4 mg/L', () =>
-  assert.strictEqual(m.status({fill: 0.5, DO: 2.0, pH: 7.5}, null).s, 'amber'));
-test('status: amber when pH is outside 6.5-8.5', () =>
-  assert.strictEqual(m.status({fill: 0.5, DO: 6, pH: 9.1}, null).s, 'amber'));
-test('status: green when everything is within limits', () =>
-  assert.strictEqual(m.status({fill: 0.5, DO: 6, pH: 7.5}, 20).s, 'green'));
-test('hours to FTL: 15% left, rising 2.5% per hour = 6 hours', () =>
-  near(m.hoursToFtl(85, 2.5), 6, 1e-9, 'hours'));
-test('hours to FTL: not rising gives no time', () =>
-  assert.strictEqual(m.hoursToFtl(85, 0), null));
-test('rise per hour with time scale 60 (1 model minute = 1 real hour)', () => {
-  const hist = [{t: 0, fill: 80}, {t: 60000, fill: 82}];   // +2% in one model minute
-  near(m.risePerHour(hist, 60), 2, 1e-9, 'rate');
-});
-test('routing: surplus goes only downhill to a lake under 80% full', () => {
-  const list = m.BASE.map(b => ({...b, fill: 0.5}));
-  const osman = list.find(l => l.id === 'osman');
-  const t = m.chooseTarget(list, osman);
-  assert.ok(t && t.ftl < osman.ftl, 'target must be lower');
-  assert.strictEqual(t.id, 'himayat');          // most free space among lower lakes
-});
-test('routing: no lower lake with space means release to the Musi', () => {
-  const list = m.BASE.map(b => ({...b, fill: 0.95}));
-  assert.strictEqual(m.chooseTarget(list, list.find(l => l.id === 'hussain')), null);
-});
-test('routing: a lake with no published height is never chosen', () => {
-  const list = m.BASE.map(b => ({...b, fill: 0.1}));
-  const t = m.chooseTarget(list, list.find(l => l.id === 'osman'));
-  assert.ok(t.ftl != null);
-});
-
-console.log(`\n${passed} tests passed`);
+let pass = 0, fail = 0;
+const ok = (c, msg) => { if (c) pass++; else { fail++; console.log('FAIL:', msg); } };
+const near = (a, b, t = 0.01) => Math.abs(a - b) <= t;
+const {LK} = m;
+ok(m.BASE.length === 5, 'five lakes');
+ok(near(m.distanceKm(LK.osman, LK.himayat), 10.62), 'O–M distance 10.62 km (doc)');
+ok(near(m.distanceKm(LK.durgam, LK.hussain), 9.01), 'D–H distance 9.01 km (doc)');
+ok(near(m.distanceKm(LK.hussain, LK.saroor), 9.42), 'H–S distance 9.42 km (doc)');
+ok(near(LK.osman.vftl / 1e6, 110.44, 0.01), 'Osman 3.90 TMC = 110.44 M m³');
+ok(near(LK.osman.fill * 100, 63.4, 0.1), 'Osman 63.4% full');
+ok(near(LK.hussain.fill * 100, 94.6, 0.1), 'Hussain 94.6% full');
+ok(near(m.wqi({DO: 2.18, BOD: 8}).value, 215, 1), 'Hussain WQI 215 with DO and BOD only (doc)');
+ok(near(m.wqi({DO: 0.3, BOD: 12}).value, 306, 1), 'Durgam WQI 306 with DO and BOD only (doc)');
+ok(m.status(LK.osman, null).s === 'green', 'Osman safe');
+ok(m.status(LK.hussain, null).s === 'amber', 'Hussain watch (94.6% full, low DO)');
+ok(m.status({...LK.hussain, fill: 1.01}, null).s === 'red', 'over FTL is red');
+ok(m.status(LK.osman, 5).s === 'red', 'under 6 h to FTL is red');
+ok(near(m.hoursToFtl(LK.hussain, 1000), 12.4, 0.1), 'Hussain 12.4 h at 1,000 cusecs (doc)');
+ok(m.SUBSTATIONS.length === m.LINKS.length, 'one substation per link');
+const ss1 = m.SUBSTATIONS[0]; ok(near(ss1.grid[0], 2.65) && near(ss1.grid[1], 4.6), 'SS-1 at the O–M midpoint (2.65, 4.60)');
+ok(m.LINKS.every(k => { const A = m.nodeOf(k.from), B = m.nodeOf(k.to); return B.ftl == null || A.ftl > B.ftl; }), 'every link goes downhill');
+const full = m.BASE.map(l => ({...l}));
+full.find(l => l.id === 'hussain').fill = 1.0; full.find(l => l.id === 'saroor').fill = 0.85;
+ok(m.chooseTarget(full, full.find(l => l.id === 'hussain')) === null, 'Saroornagar at 85% is too full, so Hussain → Musi');
+full.find(l => l.id === 'saroor').fill = 0.5;
+ok(m.chooseTarget(full, full.find(l => l.id === 'hussain')).id === 'saroor', 'Hussain → Saroornagar when it has room');
+ok(near(m.mean(LK.hussain.doSeries), 2.18), 'Hussain DO mean 2.18');
+ok(m.median([2.5, 1.4, 3.2, 2.6, 1.2]) === 2.5, 'median');
+const [la, lo] = m.toLatLon(18.4, 13.7); ok(near(la, 17.4234, 0.001) && near(lo, 78.4736, 0.001), 'grid back to lat/lon');
+console.log(`${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

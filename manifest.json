@@ -1,7 +1,9 @@
 {
   "name": "K-SWIFT – Smart Water Innovation For Tomorrow",
   "short_name": "K-SWIFT",
-  "description": "Class 10 maths model of five interconnected HMDA lakes: levels, water quality and flood alerts.",
+  "description": "Class 10 maths model of five interconnected HMDA lakes: volume, height, water quality, maps, substations, flood simulator and pollution control.",
+  "orientation": "any",
+  "categories": ["education"],
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
